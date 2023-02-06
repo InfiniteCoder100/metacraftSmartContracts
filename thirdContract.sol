@@ -13,7 +13,7 @@ contract UniswapV3PoolDeployer is IUniswapV3PoolDeployer {
         uint24 fee;
         int24 tickSpacing;
     }
-
+Parameters public override parameters;
   
     function deploy(
         address factory,
