@@ -1,50 +1,38 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity =0.7.6;
 
-import "./IERC20.sol";
+import './interfaces/IUniswapV3PoolDeployer.sol';
 
-contract ERC20 is IERC20 {
-    uint public totalSupply;
-    mapping(address => uint) public balanceOf;
-    mapping(address => mapping(address => uint)) public allowance;
-    string public name = "Solidity by Example";
-    string public symbol = "SOLBYEX";
-    uint8 public decimals = 18;
+import './UniswapV3Pool.sol';
 
-    function transfer(address recipient, uint amount) external returns (bool) {
-        balanceOf[msg.sender] -= amount;
-        balanceOf[recipient] += amount;
-        emit Transfer(msg.sender, recipient, amount);
-        return true;
+contract UniswapV3PoolDeployer is IUniswapV3PoolDeployer {
+    struct Parameters {
+        address factory;
+        address token0;
+        address token1;
+        uint24 fee;
+        int24 tickSpacing;
     }
 
-    function approve(address spender, uint amount) external returns (bool) {
-        allowance[msg.sender][spender] = amount;
-        emit Approval(msg.sender, spender, amount);
-        return true;
-    }
+    /// @inheritdoc IUniswapV3PoolDeployer
+    Parameters public override parameters;
 
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint amount
-    ) external returns (bool) {
-        allowance[sender][msg.sender] -= amount;
-        balanceOf[sender] -= amount;
-        balanceOf[recipient] += amount;
-        emit Transfer(sender, recipient, amount);
-        return true;
-    }
-
-    function mint(uint amount) external {
-        balanceOf[msg.sender] += amount;
-        totalSupply += amount;
-        emit Transfer(address(0), msg.sender, amount);
-    }
-
-    function burn(uint amount) external {
-        balanceOf[msg.sender] -= amount;
-        totalSupply -= amount;
-        emit Transfer(msg.sender, address(0), amount);
+    /// @dev Deploys a pool with the given parameters by transiently setting the parameters storage slot and then
+    /// clearing it after deploying the pool.
+    /// @param factory The contract address of the Uniswap V3 factory
+    /// @param token0 The first token of the pool by address sort order
+    /// @param token1 The second token of the pool by address sort order
+    /// @param fee The fee collected upon every swap in the pool, denominated in hundredths of a bip
+    /// @param tickSpacing The spacing between usable ticks
+    function deploy(
+        address factory,
+        address token0,
+        address token1,
+        uint24 fee,
+        int24 tickSpacing
+    ) internal returns (address pool) {
+        parameters = Parameters({factory: factory, token0: token0, token1: token1, fee: fee, tickSpacing: tickSpacing});
+        pool = address(new UniswapV3Pool{salt: keccak256(abi.encode(token0, token1, fee))}());
+        delete parameters;
     }
 }
